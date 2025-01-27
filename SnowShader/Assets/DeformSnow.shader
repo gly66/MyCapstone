@@ -2,7 +2,7 @@ Shader"Custom/DeformShader"
 {
     Properties
     {
-        _TrailMap ("Trail Map", 2D) = "white" {} // Height Map (Black and Red)
+        _HeightMap ("Height Map", 2D) = "white" {} // Height Map (Black and Red)
         _BlurSize ("Blur Size", Float) = 0.01
         _HeightMultiplier ("Height Multiplier", Float) = 1.0
         _SnowNormalMap ("Snow Normal Map", 2D) = "bump" {} // New Normal Map for Snow details
@@ -24,7 +24,7 @@ Shader"Custom/DeformShader"
 
         #include "UnityCG.cginc"
 
-        sampler2D _TrailMap;
+        sampler2D _HeightMap;
         sampler2D _SnowNormalMap; // New Normal Map
         float _BlurSize;
         float _HeightMultiplier;
@@ -62,7 +62,7 @@ Shader"Custom/DeformShader"
                 {
                     float2 offset = float2(i, j) * _BlurSize;
                     float4 uv_lod = float4(uv + offset, 0, 0); // LOD = 0
-                    mean_height += tex2Dlod(_TrailMap, uv_lod).r;
+                    mean_height += tex2Dlod(_HeightMap, uv_lod).r;
                 }
             }
             mean_height /= 9.0;
