@@ -61,7 +61,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _SnowNormalMap:
-        m_Texture: {fileID: 2800000, guid: ee9d1dc4b5351fe44a07150dd920ffe3, type: 3}
+        m_Texture: {fileID: 2800000, guid: b94c589c22e0b454a8d9d1265e4aa333, type: 3}
         m_Scale: {x: 1.87, y: 2.59}
         m_Offset: {x: 3.2, y: 1.29}
     - _TrailMap:
@@ -78,20 +78,20 @@ Material:
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
-    - _HeightMultiplier: 0.04
+    - _HeightMultiplier: 0.02
     - _Metallic: 0
     - _Mode: 0
-    - _NormalStrength: 0.65
+    - _NormalStrength: 0.8
     - _OcclusionStrength: 1
     - _Parallax: 0.02
-    - _Shininess: 15
+    - _Shininess: 10
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _UVSec: 0
     - _ZWrite: 1
     m_Colors:
-    - _BaseColor: {r: 0.7913849, g: 0.9218361, b: 0.9811321, a: 1}
+    - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}

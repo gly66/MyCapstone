@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 8cc692c3fa69a3e48950a47bf162da21
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - accumulationMaterial: {fileID: 2100000, guid: 50245149cb364eb479ce06e92792f060, type: 2}
+  - snowMaterial: {fileID: 2100000, guid: 8542fdfb1cd5d6742a95e2a222a9bdf3, type: 2}
+  - trailTexture: {fileID: 8400000, guid: 2e21df368cff27c40a4af0a28ae06789, type: 2}
+  - tempTexture: {fileID: 8400000, guid: ea51c8d14b2bb81408db6ce92a496dda, type: 2}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
