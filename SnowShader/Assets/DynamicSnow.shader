@@ -13,7 +13,9 @@ Shader "Dynamic Snow" {
         _BumpMap ("Normal Map", 2D) = "bump" {}
         _Heigth ("Initial Heigth", 2D) = "black" {}
         _TrailMap ("Trail Map", 2D) = "white" {}
+        _InitialHeight ("InitialHeight", Float ) = 1
         _DisplacementStrength ("Displacement Strength", Float ) = 1
+        _BlurSize ("Blur Size", Float) = 0.001
         _DistanceBlend ("Distance Blend", Float ) = 0
         _TesselationEdgeLength ("Tesselation Edge Length", Float ) = 20
     }
@@ -52,7 +54,9 @@ Shader "Dynamic Snow" {
             uniform sampler2D _MainTex; uniform float4 _MainTex_ST;
             uniform sampler2D _BumpMap; uniform float4 _BumpMap_ST;
             uniform sampler2D _TrailMap; uniform float4 _TrailMap_ST;
+            uniform float _InitialHeight;
             uniform float _DisplacementStrength;
+            uniform float _BlurSize;
             uniform float4 _LowerLayer;
             uniform float _DistanceBlend;
             uniform sampler2D _Heigth; uniform float4 _Heigth_ST;
@@ -136,10 +140,52 @@ Shader "Dynamic Snow" {
                 return o;
             }
 
-            void displacement (inout VertexInput v){
+            float3 displacement (inout VertexInput v){
                 float4 _Heigth_var = tex2Dlod(_Heigth,float4(TRANSFORM_TEX(v.texcoord0, _Heigth),0.0,0));
                 float4 _TrailMap_var = tex2Dlod(_TrailMap,float4(TRANSFORM_TEX(v.texcoord0, _TrailMap),0.0,0));
-                v.vertex.xyz += ((_Heigth_var.rgb*_TrailMap_var.rgb)*(_DisplacementStrength*v.normal));
+    
+                /// 3x3 Sample _TrailMap with GaussianBlur
+                float3 blurredTrailMapRGB = float3(0.0, 0.0, 0.0);
+                float2 uv = TRANSFORM_TEX(v.texcoord0, _TrailMap);
+    
+                float gaussianWeights[25] =
+                {
+                    0.003765, 0.015019, 0.023792, 0.015019, 0.003765,
+                    0.015019, 0.059912, 0.094907, 0.059912, 0.015019,
+                    0.023792, 0.094907, 0.150342, 0.094907, 0.023792,
+                    0.015019, 0.059912, 0.094907, 0.059912, 0.015019,
+                    0.003765, 0.015019, 0.023792, 0.015019, 0.003765
+                };
+
+                int index = 0;
+                for (int i = -2; i <= 2; i++)
+                {
+                    for (int j = -2; j <= 2; j++)
+                    {
+                        float2 offset = float2(i, j) * _BlurSize;
+                        float4 uv_lod = float4(uv + offset, 0, 0);
+                        float3 sampleColor = tex2Dlod(_TrailMap, uv_lod).rgb;
+                        blurredTrailMapRGB += sampleColor * gaussianWeights[index];
+                        index++;
+                    }
+                }
+
+                /// original trail is black, invert it and get white representing deformed trail
+                float3 invertedTrailMap = 1.0 - blurredTrailMapRGB;
+    
+                float3 initialHeight = _Heigth_var.rgb * _InitialHeight;
+                float3 trailDisplacement = invertedTrailMap * _DisplacementStrength;
+                
+                /// Smooth the trail edge. The logic is: lower down the very white place, rise up the dark(not that white)place, and have a smoothy transition.
+    
+                float whiteness = saturate((invertedTrailMap.r + invertedTrailMap.g + invertedTrailMap.b) / 3.0);
+                // if whiteness < 0.2 then flipFactor = 0, if whiteness > 0.8 then flipFactor = 1, if 0.2 < whiteness < 0.8, then flipFactor is set in range(0,1) smoothly
+                float flipFactor = 1 - smoothstep(0.2, 0.8, whiteness); 
+                // if flipFactor = 1 return trailDisplacement, if flipFactor = 0 return -trailDisplacement, else return linear interpolate value of (-trailDisplacement, trailDisplacement)
+                trailDisplacement = lerp(trailDisplacement, -trailDisplacement, flipFactor);
+                float3 finalDisplacement = ((initialHeight - trailDisplacement) * v.normal);
+                return finalDisplacement;
+                //v.vertex.xyz += ((initialHeight - trailDisplacement) * v.normal);
             }
 			// Edge length in clip space
             float edgeLength(float4 v1, float4 v2)
@@ -177,25 +223,60 @@ Shader "Dynamic Snow" {
             VertexOutput domain (OutputPatchConstant tessFactors, const OutputPatch<TessVertex,3> vi, float3 bary : SV_DomainLocation) {
                 VertexInput v = (VertexInput)0;
                 v.vertex = vi[0].vertex*bary.x + vi[1].vertex*bary.y + vi[2].vertex*bary.z;
-                v.normal = vi[0].normal*bary.x + vi[1].normal*bary.y + vi[2].normal*bary.z;
-                v.tangent = vi[0].tangent*bary.x + vi[1].tangent*bary.y + vi[2].tangent*bary.z;
+                v.normal = vi[0].normal * bary.x + vi[1].normal * bary.y + vi[2].normal * bary.z;
+                v.tangent = vi[0].tangent * bary.x + vi[1].tangent * bary.y + vi[2].tangent * bary.z;
                 v.texcoord0 = vi[0].texcoord0*bary.x + vi[1].texcoord0*bary.y + vi[2].texcoord0*bary.z;
 
-                displacement(v);
+                v.vertex.xyz += displacement(v);
     
-                // Recalculate normal after displacement
+                // Compute the original vertex position in world space
                 //float3 worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
 
-                // Calculate new normal using adjacent vertices
-                //float3 edge1 = mul(unity_ObjectToWorld, vi[1].vertex - vi[0].vertex).xyz;
-                //float3 edge2 = mul(unity_ObjectToWorld, vi[2].vertex - vi[0].vertex).xyz;
-                //float3 newNormal = normalize(cross(edge1, edge2)); // Cross product to get the new normal
+                //// Set the offset step size
+                //float offset = 0.05; // You can adjust this value to control smoothness
 
-                // Assign the new normal
-                //v.normal = mul(unity_WorldToObject, float4(newNormal, 0.0)).xyz;
+                //// Calculate offset directions for an equilateral triangle
+                //float2 offsetU = float2(offset, 0.0); // Offset directly in the U direction
+                //float2 offsetV = float2(0.5 * offset, 0.866 * offset); // Offset in the 60бу direction
+
+                //VertexInput v1 = v, v2 = v;
+                //v1.texcoord0 += offsetU;
+                //v2.texcoord0 += offsetV;
+
+                //// Sample the displaced height field at offset positions
+                //v1.vertex.xyz += displacement(v1);
+                //v2.vertex.xyz += displacement(v2);
+
+                //float3 worldPos1 = mul(unity_ObjectToWorld, v1.vertex).xyz;
+                //float3 worldPos2 = mul(unity_ObjectToWorld, v2.vertex).xyz;
+
+                //// Compute the new normal
+                //float3 edge1 = worldPos1 - worldPos;
+                //float3 edge2 = worldPos2 - worldPos;
+                //float3 newNormal = normalize(cross(edge1, edge2));
+
+                //// Compute the UV coordinate differences
+                //float2 dUV1 = v1.texcoord0 - v.texcoord0;
+                //float2 dUV2 = v2.texcoord0 - v.texcoord0;
+
+                //// Compute the Tangent
+                //float3x3 TBN = float3x3(edge1, edge2, newNormal);
+                //float det = dUV1.x * dUV2.y - dUV1.y * dUV2.x;
+
+                //float3 newTangent = normalize((dUV2.y * edge1 - dUV1.y * edge2) / det);
+
+                //// Assign the new normal
+                //// v.normal = mul(unity_WorldToObject, float4(newNormal, 0.0)).xyz;
+                //float4 newTangentInCP = float4(mul(unity_WorldToObject, float4(newTangent, 0.0)).xyz, v.tangent.w);
+
+                //VertexOutput o = vert(v);
+                //o.normalDir = newNormal;
+                //o.tangentDir = newTangent;
+                //o.bitangentDir = normalize(cross(o.normalDir, o.tangentDir) * newTangentInCP.w);
+                //o.posWorld = mul(unity_ObjectToWorld, v.vertex);
+                //o.pos = UnityObjectToClipPos(v.vertex);
 
                 VertexOutput o = vert(v);
-    
                 return o;
             }
 
