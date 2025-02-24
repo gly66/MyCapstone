@@ -1,4 +1,5 @@
-
+// Illumination part codes created with Shader Forge v1.38 
+// Shader Forge (c) Neat Corporation / Joachim Holmer - http://www.acegikmo.com/shaderforge/
 Shader "Dynamic Snow" {
     Properties {
         _BaseColor ("Base Color", Color) = (1,1,1,1)
@@ -10,8 +11,8 @@ Shader "Dynamic Snow" {
         _GlossColor ("Gloss Color", Color) = (1,1,1,1)
         _GlossMap ("Gloss Map", 2D) = "white" {}
         _BumpMap ("Normal Map", 2D) = "bump" {}
-        _Heigth ("Heigth", 2D) = "black" {}
-        _GroundMap ("Trail Map", 2D) = "white" {}
+        _Heigth ("Initial Heigth", 2D) = "black" {}
+        _TrailMap ("Trail Map", 2D) = "white" {}
         _DisplacementStrength ("Displacement Strength", Float ) = 1
         _DistanceBlend ("Distance Blend", Float ) = 0
         _TesselationEdgeLength ("Tesselation Edge Length", Float ) = 20
@@ -46,11 +47,11 @@ Shader "Dynamic Snow" {
             #pragma multi_compile DIRLIGHTMAP_OFF DIRLIGHTMAP_COMBINED DIRLIGHTMAP_SEPARATE
             #pragma multi_compile DYNAMICLIGHTMAP_OFF DYNAMICLIGHTMAP_ON
             #pragma multi_compile_fog
-            #pragma only_renderers d3d9 d3d11 glcore gles 
             #pragma target 5.0
+
             uniform sampler2D _MainTex; uniform float4 _MainTex_ST;
             uniform sampler2D _BumpMap; uniform float4 _BumpMap_ST;
-            uniform sampler2D _GroundMap; uniform float4 _GroundMap_ST;
+            uniform sampler2D _TrailMap; uniform float4 _TrailMap_ST;
             uniform float _DisplacementStrength;
             uniform float4 _LowerLayer;
             uniform float _DistanceBlend;
@@ -62,19 +63,18 @@ Shader "Dynamic Snow" {
             uniform float4 _SpecularColor;
             uniform float4 _GlossColor;
             uniform float _TesselationEdgeLength;
+
             struct VertexInput {
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
                 float4 tangent : TANGENT;
                 float2 texcoord0 : TEXCOORD0;
-                float2 texcoord1 : TEXCOORD1;
-                float2 texcoord2 : TEXCOORD2;
+
             };
             struct VertexOutput {
                 float4 pos : SV_POSITION;
                 float2 uv0 : TEXCOORD0;
-                float2 uv1 : TEXCOORD1;
-                float2 uv2 : TEXCOORD2;
+
                 float4 posWorld : TEXCOORD3;
                 float3 normalDir : TEXCOORD4;
                 float3 tangentDir : TEXCOORD5;
@@ -85,11 +85,12 @@ Shader "Dynamic Snow" {
                     float4 ambientOrLightmapUV : TEXCOORD10;
                 #endif
             };
+
             VertexOutput vert (VertexInput v) {
                 VertexOutput o = (VertexOutput)0;
                 o.uv0 = v.texcoord0;
-                o.uv1 = v.texcoord1;
-                o.uv2 = v.texcoord2;
+
+
                 #ifdef LIGHTMAP_ON
                     o.ambientOrLightmapUV.xy = v.texcoord1.xy * unity_LightmapST.xy + unity_LightmapST.zw;
                     o.ambientOrLightmapUV.zw = 0;
@@ -109,94 +110,124 @@ Shader "Dynamic Snow" {
                 return o;
             }
 
-                struct TessVertex {
-                    float4 vertex : INTERNALTESSPOS;
-                    float3 normal : NORMAL;
-                    float4 tangent : TANGENT;
-                    float2 texcoord0 : TEXCOORD0;
-                    float2 texcoord1 : TEXCOORD1;
-                    float2 texcoord2 : TEXCOORD2;
-                };
-                struct OutputPatchConstant {
-                    float edge[3]         : SV_TessFactor;
-                    float inside          : SV_InsideTessFactor;
-                    float3 vTangent[4]    : TANGENT;
-                    float2 vUV[4]         : TEXCOORD;
-                    float3 vTanUCorner[4] : TANUCORNER;
-                    float3 vTanVCorner[4] : TANVCORNER;
-                    float4 vCWts          : TANWEIGHTS;
-                };
-                TessVertex tessvert (VertexInput v) {
-                    TessVertex o;
-                    o.vertex = v.vertex;
-                    o.normal = v.normal;
-                    o.tangent = v.tangent;
-                    o.texcoord0 = v.texcoord0;
-                    o.texcoord1 = v.texcoord1;
-                    o.texcoord2 = v.texcoord2;
-                    return o;
-                }
-                void displacement (inout VertexInput v){
-                    float4 _Heigth_var = tex2Dlod(_Heigth,float4(TRANSFORM_TEX(v.texcoord0, _Heigth),0.0,0));
-                    float4 _GroundMap_var = tex2Dlod(_GroundMap,float4(TRANSFORM_TEX(v.texcoord0, _GroundMap),0.0,0));
-                    v.vertex.xyz += ((_Heigth_var.rgb*_GroundMap_var.rgb)*(_DisplacementStrength*v.normal));
-                }
-                float4 Tessellation(TessVertex v, TessVertex v1, TessVertex v2){
-                    return UnityEdgeLengthBasedTess(v.vertex, v1.vertex, v2.vertex, _TesselationEdgeLength);
-                }
-                OutputPatchConstant hullconst (InputPatch<TessVertex,3> v) {
-                    OutputPatchConstant o = (OutputPatchConstant)0;
-                    float4 ts = Tessellation( v[0], v[1], v[2] );
-                    o.edge[0] = ts.x;
-                    o.edge[1] = ts.y;
-                    o.edge[2] = ts.z;
-                    o.inside = ts.w;
-                    return o;
-                }
-                [domain("tri")]
-                [partitioning("fractional_odd")]
-                [outputtopology("triangle_cw")]
-                [patchconstantfunc("hullconst")]
-                [outputcontrolpoints(3)]
-                TessVertex hull (InputPatch<TessVertex,3> v, uint id : SV_OutputControlPointID) {
-                    return v[id];
-                }
-                [domain("tri")]
-                VertexOutput domain (OutputPatchConstant tessFactors, const OutputPatch<TessVertex,3> vi, float3 bary : SV_DomainLocation) {
-                    VertexInput v = (VertexInput)0;
-                    v.vertex = vi[0].vertex*bary.x + vi[1].vertex*bary.y + vi[2].vertex*bary.z;
-                    v.normal = vi[0].normal*bary.x + vi[1].normal*bary.y + vi[2].normal*bary.z;
-                    v.tangent = vi[0].tangent*bary.x + vi[1].tangent*bary.y + vi[2].tangent*bary.z;
-                    v.texcoord0 = vi[0].texcoord0*bary.x + vi[1].texcoord0*bary.y + vi[2].texcoord0*bary.z;
-                    v.texcoord1 = vi[0].texcoord1*bary.x + vi[1].texcoord1*bary.y + vi[2].texcoord1*bary.z;
-                    displacement(v);
-                    VertexOutput o = vert(v);
-                    return o;
-                }
+            struct TessVertex {
+                float4 vertex : INTERNALTESSPOS;
+                float3 normal : NORMAL;
+                float4 tangent : TANGENT;
+                float2 texcoord0 : TEXCOORD0;
+
+            };
+            struct OutputPatchConstant {
+                float edge[3]         : SV_TessFactor;
+                float inside          : SV_InsideTessFactor;
+                float3 vTangent[4]    : TANGENT;
+                float2 vUV[4]         : TEXCOORD;
+                float3 vTanUCorner[4] : TANUCORNER;
+                float3 vTanVCorner[4] : TANVCORNER;
+                float4 vCWts          : TANWEIGHTS;
+            };
+            TessVertex tessvert (VertexInput v) {
+                TessVertex o;
+                o.vertex = v.vertex;
+                o.normal = v.normal;
+                o.tangent = v.tangent;
+                o.texcoord0 = v.texcoord0;
+
+                return o;
+            }
+
+            void displacement (inout VertexInput v){
+                float4 _Heigth_var = tex2Dlod(_Heigth,float4(TRANSFORM_TEX(v.texcoord0, _Heigth),0.0,0));
+                float4 _TrailMap_var = tex2Dlod(_TrailMap,float4(TRANSFORM_TEX(v.texcoord0, _TrailMap),0.0,0));
+                v.vertex.xyz += ((_Heigth_var.rgb*_TrailMap_var.rgb)*(_DisplacementStrength*v.normal));
+            }
+			// Edge length in clip space
+            float edgeLength(float4 v1, float4 v2)
+            {
+				
+                float2 p1 = v1.xyz / v1.w;
+                float2 p2 = v2.xyz / v2.w;
+    
+                return length(p1 - p2);
+            }
+            float4 Tessellation(TessVertex v, TessVertex v1, TessVertex v2){
+                // Tessellated based on edge length in clipspace
+                return UnityEdgeLengthBasedTess(v.vertex, v1.vertex, v2.vertex, _TesselationEdgeLength);
+            }
+
+            OutputPatchConstant hullconst (InputPatch<TessVertex,3> v) {
+                OutputPatchConstant o = (OutputPatchConstant)0;
+                float4 ts = Tessellation( v[0], v[1], v[2] );
+                o.edge[0] = ts.x;
+                o.edge[1] = ts.y;
+                o.edge[2] = ts.z;
+                o.inside = ts.w; // The number of interior vertices generated is approximately related to the square of inside
+                //o.inside = ts.w;
+                return o;
+            }
+            [domain("tri")]
+            [partitioning("integer")]
+            [outputtopology("triangle_cw")]
+            [patchconstantfunc("hullconst")]
+            [outputcontrolpoints(3)]
+            TessVertex hull (InputPatch<TessVertex,3> v, uint id : SV_OutputControlPointID) {
+                return v[id];
+            }
+            [domain("tri")]
+            VertexOutput domain (OutputPatchConstant tessFactors, const OutputPatch<TessVertex,3> vi, float3 bary : SV_DomainLocation) {
+                VertexInput v = (VertexInput)0;
+                v.vertex = vi[0].vertex*bary.x + vi[1].vertex*bary.y + vi[2].vertex*bary.z;
+                v.normal = vi[0].normal*bary.x + vi[1].normal*bary.y + vi[2].normal*bary.z;
+                v.tangent = vi[0].tangent*bary.x + vi[1].tangent*bary.y + vi[2].tangent*bary.z;
+                v.texcoord0 = vi[0].texcoord0*bary.x + vi[1].texcoord0*bary.y + vi[2].texcoord0*bary.z;
+
+                displacement(v);
+    
+                // Recalculate normal after displacement
+                //float3 worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
+
+                // Calculate new normal using adjacent vertices
+                //float3 edge1 = mul(unity_ObjectToWorld, vi[1].vertex - vi[0].vertex).xyz;
+                //float3 edge2 = mul(unity_ObjectToWorld, vi[2].vertex - vi[0].vertex).xyz;
+                //float3 newNormal = normalize(cross(edge1, edge2)); // Cross product to get the new normal
+
+                // Assign the new normal
+                //v.normal = mul(unity_WorldToObject, float4(newNormal, 0.0)).xyz;
+
+                VertexOutput o = vert(v);
+    
+                return o;
+            }
 
             float4 frag(VertexOutput i) : COLOR {
                 i.normalDir = normalize(i.normalDir);
                 float3x3 tangentTransform = float3x3( i.tangentDir, i.bitangentDir, i.normalDir);
-                float3 viewDirection = normalize(_WorldSpaceCameraPos.xyz - i.posWorld.xyz);
                 float3 _BumpMap_var = UnpackNormal(tex2D(_BumpMap,TRANSFORM_TEX(i.uv0, _BumpMap)));
                 float3 normalLocal = _BumpMap_var.rgb;
-                float3 normalDirection = normalize(mul( normalLocal, tangentTransform )); // Perturbed normals
+    
+                // blend normals with normal maps
+                float3 normalDirection = normalize(mul( normalLocal, tangentTransform )); 
+    
+                // View direction and light direction
+                float3 viewDirection = normalize(_WorldSpaceCameraPos.xyz - i.posWorld.xyz);
                 float3 viewReflectDirection = reflect( -viewDirection, normalDirection );
                 float3 lightDirection = normalize(_WorldSpaceLightPos0.xyz);
                 float3 lightColor = _LightColor0.rgb;
                 float3 halfDirection = normalize(viewDirection+lightDirection);
-                ////// Lighting:
+    
+                // Lighting:
                 float attenuation = LIGHT_ATTENUATION(i);
                 float3 attenColor = attenuation * _LightColor0.xyz;
                 float Pi = 3.141592654;
                 float InvPi = 0.31830988618;
-                ///////// Gloss:
+    
+                // Gloss:
                 float4 _GlossMap_var = tex2D(_GlossMap,TRANSFORM_TEX(i.uv0, _GlossMap));
                 float gloss = (_GlossMap_var.r*_GlossColor.r);
                 float perceptualRoughness = 1.0 - (_GlossMap_var.r*_GlossColor.r);
                 float roughness = perceptualRoughness * perceptualRoughness;
-                float specPow = exp2( gloss * 10.0 + 1.0 );
-                /////// GI Data:
+    
+                // GI Data:
                 UnityLight light;
                 #ifdef LIGHTMAP_OFF
                     light.color = lightColor;
@@ -236,19 +267,25 @@ Shader "Dynamic Snow" {
                 UnityGI gi = UnityGlobalIllumination(d, 1, normalDirection, ugls_en_data );
                 lightDirection = gi.light.dir;
                 lightColor = gi.light.color;
-                ////// Specular:
+    
+                // Specular:
                 float NdotL = saturate(dot( normalDirection, lightDirection ));
                 float LdotH = saturate(dot(lightDirection, halfDirection));
                 float4 _SpecMap_var = tex2D(_SpecMap,TRANSFORM_TEX(i.uv0, _SpecMap));
                 float3 specularColor = (_SpecMap_var.rgb*_SpecularColor.rgb);
                 float specularMonochrome;
-                float node_3811_if_leA = step(_UseLowerLayer,0.0);
-                float node_3811_if_leB = step(0.0,_UseLowerLayer);
+                
+                float UseLower = step(0.0, _UseLowerLayer); //Decide blending lower layer or not
+                float notUseLower = 1 - UseLower;
                 float4 _MainTex_var = tex2D(_MainTex,TRANSFORM_TEX(i.uv0, _MainTex));
-                float3 node_2926 = (_MainTex_var.rgb*_BaseColor.rgb);
-                float4 _GroundMap_var = tex2D(_GroundMap,TRANSFORM_TEX(i.uv0, _GroundMap));
-                float3 diffuseColor = lerp(lerp((node_3811_if_leA*node_2926)+(node_3811_if_leB*lerp(_LowerLayer.rgb,node_2926,_GroundMap_var.rgb)),node_2926,node_3811_if_leA*node_3811_if_leB),node_2926,saturate(pow((distance(i.posWorld.rgb,_WorldSpaceCameraPos)/_DistanceBlend),8.0))); // Need this for specular when using metallic
+                float3 baseColor = (_MainTex_var.rgb*_BaseColor.rgb);
+                float4 _TrailMap_var = tex2D(_TrailMap,TRANSFORM_TEX(i.uv0, _TrailMap));
+                float3 lowerLayerColor = lerp(_LowerLayer.rgb, baseColor, _TrailMap_var.rgb);
+                float3 mixedColor = lerp(baseColor, lowerLayerColor, UseLower);
+                float distanceFactor = saturate(pow(distance(i.posWorld.rgb, _WorldSpaceCameraPos) / _DistanceBlend, 8.0)); 
+                float3 diffuseColor = lerp(mixedColor, baseColor, distanceFactor); // Need this for specular when using metallic. And blend based on distance. If is far away, only show base color
                 diffuseColor = EnergyConservationBetweenDiffuseAndSpecular(diffuseColor, specularColor, specularMonochrome);
+    
                 specularMonochrome = 1.0-specularMonochrome;
                 float NdotV = abs(dot( normalDirection, viewDirection ));
                 float NdotH = saturate(dot( normalDirection, halfDirection ));
@@ -276,6 +313,7 @@ Shader "Dynamic Snow" {
                 indirectSpecular *= FresnelLerp (specularColor, grazingTerm, NdotV);
                 indirectSpecular *= surfaceReduction;
                 float3 specular = (directSpecular + indirectSpecular);
+    
                 /////// Diffuse:
                 NdotL = max(0.0,dot( normalDirection, lightDirection ));
                 half fd90 = 0.5 + 2 * LdotH * LdotH * (1-gloss);
@@ -286,11 +324,12 @@ Shader "Dynamic Snow" {
                 indirectDiffuse += gi.indirect.diffuse;
                 diffuseColor *= 1-specularMonochrome;
                 float3 diffuse = (directDiffuse + indirectDiffuse) * diffuseColor;
-                /// Final Color:
+    
+                // Final Color:
                 float3 finalColor = diffuse + specular;
-                fixed4 finalRGBA = fixed4(finalColor,1);
-                UNITY_APPLY_FOG(i.fogCoord, finalRGBA);
-                return finalRGBA;
+                return fixed4(finalColor, 1);
+                
+
             }
             ENDCG
         }
