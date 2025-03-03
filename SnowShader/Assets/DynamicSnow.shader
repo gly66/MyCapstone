@@ -44,6 +44,7 @@ Shader "Dynamic Snow" {
             #include "Tessellation.cginc"
             #include "UnityPBSLighting.cginc"
             #include "UnityStandardBRDF.cginc"
+
             #pragma multi_compile_fwdbase_fullshadows
             #pragma multi_compile LIGHTMAP_OFF LIGHTMAP_ON
             #pragma multi_compile DIRLIGHTMAP_OFF DIRLIGHTMAP_COMBINED DIRLIGHTMAP_SEPARATE
@@ -76,9 +77,9 @@ Shader "Dynamic Snow" {
 
             };
             struct VertexOutput {
+    
                 float4 pos : SV_POSITION;
                 float2 uv0 : TEXCOORD0;
-
                 float4 posWorld : TEXCOORD3;
                 float3 normalDir : TEXCOORD4;
                 float3 tangentDir : TEXCOORD5;
@@ -110,7 +111,7 @@ Shader "Dynamic Snow" {
                 float3 lightColor = _LightColor0.rgb;
                 o.pos = UnityObjectToClipPos( v.vertex );
                 UNITY_TRANSFER_FOG(o,o.pos);
-                TRANSFER_VERTEX_TO_FRAGMENT(o)
+                TRANSFER_VERTEX_TO_FRAGMENT(o);
                 return o;
             }
 
@@ -141,10 +142,10 @@ Shader "Dynamic Snow" {
             }
 
             float3 displacement (inout VertexInput v){
-                float4 _Heigth_var = tex2Dlod(_Heigth,float4(TRANSFORM_TEX(v.texcoord0, _Heigth),0.0,0));
-                float4 _TrailMap_var = tex2Dlod(_TrailMap,float4(TRANSFORM_TEX(v.texcoord0, _TrailMap),0.0,0));
     
-                /// 3x3 Sample _TrailMap with GaussianBlur
+                /// 5x5 Sampling with GaussianBlur
+    
+                float3 blurredHeigthRGB = float3(0.0, 0.0, 0.0);
                 float3 blurredTrailMapRGB = float3(0.0, 0.0, 0.0);
                 float2 uv = TRANSFORM_TEX(v.texcoord0, _TrailMap);
     
@@ -165,15 +166,16 @@ Shader "Dynamic Snow" {
                         float2 offset = float2(i, j) * _BlurSize;
                         float4 uv_lod = float4(uv + offset, 0, 0);
                         float3 sampleColor = tex2Dlod(_TrailMap, uv_lod).rgb;
+                        float3 sampleHeigthColor = tex2Dlod(_Heigth, uv_lod).rgb;
                         blurredTrailMapRGB += sampleColor * gaussianWeights[index];
+                        blurredHeigthRGB += sampleHeigthColor * gaussianWeights[index];
                         index++;
                     }
                 }
-
-                /// original trail is black, invert it and get white representing deformed trail
-                float3 invertedTrailMap = 1.0 - blurredTrailMapRGB;
     
-                float3 initialHeight = _Heigth_var.rgb * _InitialHeight;
+                float3 initialHeight = blurredTrailMapRGB * _InitialHeight;
+                /// original trail is black, invert it and get white representing deformed trail: if not, more black, rgb is closer to 0. the displacement will be 0
+                float3 invertedTrailMap = 1.0 - blurredTrailMapRGB;
                 float3 trailDisplacement = invertedTrailMap * _DisplacementStrength;
                 
                 /// Smooth the trail edge. The logic is: lower down the very white place, rise up the dark(not that white)place, and have a smoothy transition.
@@ -220,7 +222,7 @@ Shader "Dynamic Snow" {
                 return v[id];
             }
             [domain("tri")]
-            VertexOutput domain (OutputPatchConstant tessFactors, const OutputPatch<TessVertex,3> vi, float3 bary : SV_DomainLocation) {
+            VertexOutput domain (OutputPatchConstant tessFactors, const OutputPatch<TessVertex,3> vi, float3 bary : SV_DomainLocation) { 
                 VertexInput v = (VertexInput)0;
                 v.vertex = vi[0].vertex*bary.x + vi[1].vertex*bary.y + vi[2].vertex*bary.z;
                 v.normal = vi[0].normal * bary.x + vi[1].normal * bary.y + vi[2].normal * bary.z;
@@ -414,7 +416,53 @@ Shader "Dynamic Snow" {
             }
             ENDCG
         }
+        Pass {
+            Name"Shadow"
+            Tags
+            {
+                "LightMode"="ShadowCaster"
+            }
 
+            Offset 1, 1
+            Cull Back
+            
+            CGPROGRAM
+ 
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma multi_compile_shadowcaster
+            #pragma target 5.0
+            #include "UnityCG.cginc"
+
+
+            struct VertexInput
+            {
+                float4 vertex : POSITION;
+                float3 normal : NORMAL;
+                float2 texcoord0 : TEXCOORD0;
+
+            };
+            struct VertexOutput
+            {
+                V2F_SHADOW_CASTER;
+
+                float2 uv0 : TEXCOORD1;
+            };
+            VertexOutput vert(VertexInput v)
+            {
+                VertexOutput o;
+                o.uv0 = v.texcoord0;
+                TRANSFER_SHADOW_CASTER(o)
+
+                return o;
+            }
+
+            float4 frag(VertexOutput i) : COLOR
+            {
+                SHADOW_CASTER_FRAGMENT(i)
+            }
+            ENDCG
+        }
     }
     
 }
