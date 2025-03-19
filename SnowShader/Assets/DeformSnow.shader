@@ -9,7 +9,7 @@ Shader"Custom/DeformShader"
         _NormalStrength ("Normal Strength", Float) = 1.0 // Strength of the normal map effect
         _Shininess ("Shininess", Float) = 32.0 // Controls the size and sharpness of specular highlights
         _SpecularColor ("Specular Color", Color) = (1, 1, 1, 1) // Specular highlight color
-        _BaseColor ("Base Color", Color) = (0.9, 0.9, 1.0, 1) // Soft blue tint for snow base color
+        _BaseColor ("Base Color", Color) = (1, 1, 1., 1) // Soft blue tint for snow base color
     }
 
     SubShader
@@ -54,7 +54,7 @@ Shader"Custom/DeformShader"
         float CalculateHeight(float2 uv)
         {
             float mean_height = 0.0;
-
+            uv.y = 1 - uv.y;
             // Sampling a 3x3 area for height averaging
             for (int i = -1; i <= 1; i++)
             {
@@ -74,9 +74,19 @@ Shader"Custom/DeformShader"
             v2f o;
             o.uv = v.uv;
 
-            // Sample the current vertex height
+    
+                // 将顶点从对象空间转换到世界空间
+            float4 worldPos = mul(unity_ObjectToWorld, v.vertex);
+
+            // 计算高度
             float heightPos = CalculateHeight(v.uv);
-            v.vertex.y -= heightPos;
+            worldPos.y -= heightPos; // 在世界空间中调整 Y 轴高度
+
+            // 再转换回对象空间
+            v.vertex = mul(unity_WorldToObject, worldPos);
+            // Sample the current vertex height
+            //float heightPos = CalculateHeight(v.uv);
+            //v.vertex.y -= heightPos;
 
             // Sample heights at adjacent points to calculate the normal
             float heightL = CalculateHeight(v.uv + float2(-_BlurSize, 0));
@@ -101,7 +111,7 @@ Shader"Custom/DeformShader"
 
         fixed4 frag(v2f i) : SV_Target
         {
-    
+            //SurfaceOutputStandard s;
             //s.Metallic = _SpecPow;
             //s.Smoothness = _GlossPow;
             float3 lightDir = normalize(_WorldSpaceLightPos0.xyz);
@@ -123,7 +133,7 @@ Shader"Custom/DeformShader"
             float3 viewDir = normalize(_WorldSpaceCameraPos - i.pos.xyz);
             float3 reflectDir = reflect(-lightDir, combinedNormal);
             float spec = pow(max(dot(viewDir, reflectDir), 0.0), _Shininess);
-                
+            
             // Final color combining base color, diffuse, and specular contributions
             fixed4 color = _BaseColor * nDotL + _SpecularColor * spec;
 

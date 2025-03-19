@@ -13,5 +13,5 @@ void HeightMapCompute(uint3 id : SV_DispatchThreadID)
     float accumulatedHeight = accumulatedHeightMap[id.xy].r;
 
 
-    accumulatedHeightMap[id.xy] = float4(currentHeight + accumulatedHeight, 0, 0, 0);
+    accumulatedHeightMap[id.xy] = float4(max(currentHeight, accumulatedHeight), 0, 0, 0);
 }
