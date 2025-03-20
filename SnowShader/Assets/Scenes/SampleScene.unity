@@ -398,7 +398,6 @@ GameObject:
   - component: {fileID: 132872755}
   - component: {fileID: 132872754}
   - component: {fileID: 132872756}
-  - component: {fileID: 132872757}
   m_Layer: 0
   m_Name: UpdateHeightMap
   m_TagString: Untagged
@@ -450,22 +449,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   computeShader: {fileID: 7200000, guid: 87caad53314ea04478674bc08d386705, type: 3}
-  snowMaterial: {fileID: 2100000, guid: 2cd5cf5c0db61bc4abfdf0bce451b13a, type: 2}
+  snowMaterial: {fileID: 2100000, guid: 78aac9c10ccc2b84a868cd0d1ba69ea1, type: 2}
   currentHeightMap: {fileID: 8400000, guid: 630588a596602764690220deec64f6de, type: 2}
   accumulatedHeightMap: {fileID: 0}
---- !u!114 &132872757
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 132872753}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2adf54ade77a0794baf30f4317c6e3ce, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  orthoCam: {fileID: 1101774857}
 --- !u!1 &142554738 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: f0e8dbc9db2f48c4f9cfd88c2b4d7a38, type: 3}
@@ -1852,7 +1838,7 @@ Light:
   m_InnerSpotAngle: 21.80208
   m_CookieSize: 10
   m_Shadows:
-    m_Type: 1
+    m_Type: 2
     m_Resolution: -1
     m_CustomResolution: -1
     m_Strength: 1
@@ -8161,6 +8147,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: SnowGround
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: f0e8dbc9db2f48c4f9cfd88c2b4d7a38, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f0e8dbc9db2f48c4f9cfd88c2b4d7a38, type: 3}
 --- !u!1 &1063214426
@@ -9558,7 +9548,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1576629869}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f5695235e33f6f44a996804b670d14a8, type: 3}
   m_Name: 
@@ -9586,7 +9576,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 2cd5cf5c0db61bc4abfdf0bce451b13a, type: 2}
+  - {fileID: 2100000, guid: 78aac9c10ccc2b84a868cd0d1ba69ea1, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -15177,7 +15167,7 @@ GameObject:
   - component: {fileID: 2026876868}
   - component: {fileID: 2026876867}
   m_Layer: 0
-  m_Name: Plane
+  m_Name: DepthMapShowPlane
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -15255,7 +15245,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2026876866}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 18.6, y: -1.0886924, z: 21.776003}
+  m_LocalPosition: {x: 18.6, y: -1.0886924, z: 82.9}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
