@@ -31,28 +31,27 @@ Shader"Dynamic Snow" {
             }
             
             
-                    CGPROGRAM
-                    #pragma vertex tessvert
-                    #pragma hull hull
-                    #pragma domain domain
-                    //#pragma geometry gs
-                    #pragma fragment frag
+                CGPROGRAM
+                #pragma vertex tessvert
+                #pragma hull hull
+                #pragma domain domain
+                #pragma fragment frag
 
-                    #define SHOULD_SAMPLE_SH ( defined (LIGHTMAP_OFF) && defined(DYNAMICLIGHTMAP_OFF) )
-                    #define _GLOSSYENV 1
-                    #include "UnityCG.cginc"
-                    #include "AutoLight.cginc"
-                    #include "Lighting.cginc"
-                    #include "Tessellation.cginc"
-                    #include "UnityPBSLighting.cginc"
-                    #include "UnityStandardBRDF.cginc"
+                #define SHOULD_SAMPLE_SH ( defined (LIGHTMAP_OFF) && defined(DYNAMICLIGHTMAP_OFF) )
+                #define _GLOSSYENV 1
+                #include "UnityCG.cginc"
+                #include "AutoLight.cginc"
+                #include "Lighting.cginc"
+                #include "Tessellation.cginc"
+                #include "UnityPBSLighting.cginc"
+                #include "UnityStandardBRDF.cginc"
 
-                    #pragma multi_compile_fwdbase_fullshadows
-                    #pragma multi_compile LIGHTMAP_OFF LIGHTMAP_ON
-                    #pragma multi_compile DIRLIGHTMAP_OFF DIRLIGHTMAP_COMBINED DIRLIGHTMAP_SEPARATE
-                    #pragma multi_compile DYNAMICLIGHTMAP_OFF DYNAMICLIGHTMAP_ON
-                    #pragma multi_compile_fog
-                    #pragma target 5.0
+                #pragma multi_compile_fwdbase_fullshadows
+                #pragma multi_compile LIGHTMAP_OFF LIGHTMAP_ON
+                #pragma multi_compile DIRLIGHTMAP_OFF DIRLIGHTMAP_COMBINED DIRLIGHTMAP_SEPARATE
+                #pragma multi_compile DYNAMICLIGHTMAP_OFF DYNAMICLIGHTMAP_ON
+                #pragma multi_compile_fog
+                #pragma target 5.0
 
                 uniform sampler2D _MainTex;
                 uniform float4 _MainTex_ST;
@@ -94,8 +93,8 @@ Shader"Dynamic Snow" {
                     float3 normalDir : TEXCOORD4;
                     float3 tangentDir : TEXCOORD5;
                     float3 bitangentDir : TEXCOORD6;
-                                LIGHTING_COORDS(7,8)
-                                UNITY_FOG_COORDS(9)
+                    LIGHTING_COORDS(7,8)
+                    UNITY_FOG_COORDS(9)
                 #if defined(LIGHTMAP_ON) || defined(UNITY_SHOULD_SAMPLE_SH)
                                     float4 ambientOrLightmapUV : TEXCOORD10;
                 #endif
@@ -139,6 +138,7 @@ Shader"Dynamic Snow" {
                     float blurredTrailMapR = 0.0;
                     float2 uv = TRANSFORM_TEX(v.texcoord0, _TrailMap);
                     uv.y = 1 - uv.y;
+                    float baseColor = tex2Dlod(_TrailMap, float4(uv, 0, 0)).r;
     
                     float gaussianWeights[25] =
                     {
@@ -174,6 +174,8 @@ Shader"Dynamic Snow" {
                                 //float flipFactor = 1 - smoothstep(0.2, 0.8, whiteness); 
                                 //// if flipFactor = 1 return trailDisplacement, if flipFactor = 0 return -trailDisplacement, else return linear interpolate value of (-trailDisplacement, trailDisplacement)
                                 //trailDisplacement = lerp(trailDisplacement, -trailDisplacement, flipFactor);
+                    //if (baseColor  < 0.01f)
+                    //    trailDisplacement = -trailDisplacement;
                     return trailDisplacement;
                                 //v.vertex.xyz += ((initialHeight - trailDisplacement) * v.normal);
                 }
@@ -258,7 +260,7 @@ Shader"Dynamic Snow" {
                     o.posWorld = worldPos;
                     o.pos = UnityObjectToClipPos(v.vertex);
     
-                 
+                    TRANSFER_VERTEX_TO_FRAGMENT(o)
                     return o;
 
                 }
@@ -335,7 +337,7 @@ Shader"Dynamic Snow" {
                     lightDirection = gi.light.dir;
                     lightColor = gi.light.color;
     
-                                // Specular:
+                    // Specular:
                     float NdotL = saturate(dot(normalDirection, lightDirection));
                     float LdotH = saturate(dot(lightDirection, halfDirection));
                     float4 _SpecMap_var = tex2D(_SpecMap, TRANSFORM_TEX(i.uv0, _SpecMap));
@@ -345,8 +347,10 @@ Shader"Dynamic Snow" {
                     float UseLower = step(0.5, _UseLowerLayer); //Decide blending lower layer or not
                     float4 _MainTex_var = tex2D(_MainTex, TRANSFORM_TEX(i.uv0, _MainTex));
                     float3 baseColor = (_MainTex_var.rgb * _BaseColor.rgb);
-                    float _TrailMap_var = tex2D(_TrailMap, TRANSFORM_TEX(i.uv0, _TrailMap)).r;
-                    float3 lowerLayerColor = lerp(_LowerLayer.rgb, baseColor, _TrailMap_var);
+                    float2 reversedUV = i.uv0;
+                    reversedUV.y = 1 - reversedUV.y;
+                    float _TrailMap_var = tex2D(_TrailMap, TRANSFORM_TEX(reversedUV, _TrailMap)).r;
+                    float3 lowerLayerColor = lerp(_LowerLayer.rgb, baseColor, 1 - _TrailMap_var);
                     float3 mixedColor = lerp(baseColor, lowerLayerColor, UseLower);
                     float distanceFactor = saturate(pow(distance(i.posWorld.rgb, _WorldSpaceCameraPos) / _DistanceBlend, 8.0));
                     float3 diffuseColor = lerp(mixedColor, baseColor, distanceFactor); // Need this for specular when using metallic. And blend based on distance. If is far away, only show base color

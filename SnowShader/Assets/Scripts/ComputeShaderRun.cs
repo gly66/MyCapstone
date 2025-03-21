@@ -9,6 +9,7 @@ public class ComputeShaderRun : MonoBehaviour
     public Material snowMaterial;
     public RenderTexture currentHeightMap; 
     public RenderTexture accumulatedHeightMap;
+    public float decayRate = 0.0001f;
     // Start is called before the first frame update
     void Start()
     {
@@ -27,6 +28,7 @@ public class ComputeShaderRun : MonoBehaviour
         int kernelHandle = computeShader.FindKernel("HeightMapCompute");
         computeShader.SetTexture(kernelHandle, "currentHeightMap", currentHeightMap);
         computeShader.SetTexture(kernelHandle, "accumulatedHeightMap", accumulatedHeightMap);
+        computeShader.SetFloat("_DecayRate", decayRate);
         computeShader.Dispatch(kernelHandle, currentHeightMap.width / 8, currentHeightMap.height / 8, 1);
         snowMaterial.SetTexture("_TrailMap", accumulatedHeightMap);
         //string filePath = Application.dataPath + "/HeightMap.png";
