@@ -132,7 +132,7 @@ Shader"Dynamic Snow" {
                 float displacement(inout VertexInput v)
                 {
     
-                                /// 5x5 Sampling with GaussianBlur
+                    /// 5x5 Sampling with GaussianBlur
     
                     //float3 blurredHeigthRGB = float3(0.0, 0.0, 0.0);
                     float blurredTrailMapR = 0.0;
@@ -249,9 +249,8 @@ Shader"Dynamic Snow" {
                         float hD = displacement(v3);
                         float hU = displacement(v4);
     
-                        worldNormal = normalize(float3(hL - hR, 2.0 * offset * 100, hD - hU));
+                        worldNormal = normalize(float3(hR - hL, 2.0 * offset * 100, hU - hD));
                     }
-    
                     VertexOutput o = (VertexOutput) 0;
                     o.uv0 = v.texcoord0;
                     o.normalDir = worldNormal;
@@ -274,8 +273,8 @@ Shader"Dynamic Snow" {
                     float3 normalLocal = _BumpMap_var.rgb;
     
                     // blend normals with normal maps
-                    float3 normalDirection = normalize(mul(normalLocal, tangentTransform) + i.normalDir);
-                                //float3 normalDirection = i.normalDir;
+                    float3 normalDirection = normalize(mul(normalLocal, tangentTransform));
+                    //float3 normalDirection = i.normalDir;
     
                     // View direction and light direction
                     float3 viewDirection = normalize(_WorldSpaceCameraPos.xyz - i.posWorld.xyz);
@@ -353,7 +352,8 @@ Shader"Dynamic Snow" {
                     float3 lowerLayerColor = lerp(_LowerLayer.rgb, baseColor, 1 - _TrailMap_var);
                     float3 mixedColor = lerp(baseColor, lowerLayerColor, UseLower);
                     float distanceFactor = saturate(pow(distance(i.posWorld.rgb, _WorldSpaceCameraPos) / _DistanceBlend, 8.0));
-                    float3 diffuseColor = lerp(mixedColor, baseColor, distanceFactor); // Need this for specular when using metallic. And blend based on distance. If is far away, only show base color
+                    // Need this for specular when using metallic. And blend based on distance. If is far away, only show base color
+                    float3 diffuseColor = lerp(mixedColor, baseColor, distanceFactor); 
                     diffuseColor = EnergyConservationBetweenDiffuseAndSpecular(diffuseColor, specularColor, specularMonochrome);
     
                     specularMonochrome = 1.0 - specularMonochrome;
@@ -384,7 +384,7 @@ Shader"Dynamic Snow" {
                     indirectSpecular *= surfaceReduction;
                     float3 specular = (directSpecular + indirectSpecular);
     
-                                /////// Diffuse:
+                    /////// Diffuse:
                     NdotL = max(0.0, dot(normalDirection, lightDirection));
                     half fd90 = 0.5 + 2 * LdotH * LdotH * (1 - gloss);
                     float nlPow5 = Pow5(1 - NdotL);
@@ -395,7 +395,7 @@ Shader"Dynamic Snow" {
                     diffuseColor *= 1 - specularMonochrome;
                     float3 diffuse = (directDiffuse + indirectDiffuse) * diffuseColor;
     
-                                // Final Color:
+                    // Final Color:
                     float3 finalColor = diffuse + specular;
                     return fixed4(finalColor, 1);
                 
