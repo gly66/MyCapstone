@@ -1,6 +1,6 @@
 // Illumination part codes created with Shader Forge v1.38 
 // Shader Forge (c) Neat Corporation / Joachim Holmer - http://www.acegikmo.com/shaderforge/
-Shader"Dynamic Snow" {
+Shader"Otho Snow" {
     Properties {
         _BaseColor ("Base Color", Color) = (1,1,1,1)
         _MainTex ("Base Color", 2D) = "bump" {}
@@ -163,9 +163,9 @@ Shader"Dynamic Snow" {
                             index++;
                         }
                     }
-    
+                   // float edgeLift = (baseColor - blurredTrailMapR) * _DisplacementStrength * 0.2;
                                 /// original trail is black, invert it and get white representing deformed trail: if not, more black, rgb is closer to 0. the displacement will be 0
-                    float trailDisplacement = blurredTrailMapR * _DisplacementStrength;
+                    float trailDisplacement = blurredTrailMapR  * _DisplacementStrength;
                 
                                 /// Smooth the trail edge. The logic is: lower down the very white place, rise up the dark(not that white)place, and have a smoothy transition.
     
@@ -230,7 +230,7 @@ Shader"Dynamic Snow" {
                     
                     float3 worldNormal = UnityObjectToWorldNormal(v.normal);
                     // recalculate normals only when there is a displacement
-                    if (length(displacementAmount) >= 0.05)
+                    if (length(displacementAmount) >= 0.01 )
                     {
                         //Set the offset step size
                         float offset = 1.0 / 1024; // You can adjust this value to control smoothness
@@ -273,8 +273,26 @@ Shader"Dynamic Snow" {
                     float3 normalLocal = _BumpMap_var.rgb;
     
                     // blend normals with normal maps
-                    float3 normalDirection = normalize(mul(normalLocal, tangentTransform));
-                    //float3 normalDirection = i.normalDir;
+                    float3 normalMap = normalize(mul(normalLocal, tangentTransform));
+                    float3 normalDirection = normalMap;
+    
+                    float3x3 worldToTangent = transpose(tangentTransform);
+                    float3 baseNormalTS = mul(worldToTangent, i.normalDir);
+    
+    
+                    //float3 t = (i.normalDir * 0.5 + 0.5) * float3(2, 2, 2) + float3(-1, -1, 0);
+                    //float3 u = (normalMap * 0.5 + 0.5) * float3(-2, -2, 2) + float3(1, 1, -1);
+                    //float3 normalDirection = normalize(t * dot(t, u) - u * t.z);;
+
+    //float3 n1 = baseNormalTS;
+    //float3 n2 = _BumpMap_var;
+
+    //float3x3 nBasis = float3x3(
+    //                                float3(n1.z, n1.y, -n1.x), // +90 degree rotation around y axis
+    //                                float3(n1.x, n1.z, -n1.y), // -90 degree rotation around x axis
+    //                                float3(n1.x, n1.y, n1.z));
+
+    //float3 normalDirection = normalize(n2.x * nBasis[0] + n2.y * nBasis[1] + n2.z * nBasis[2]);
     
                     // View direction and light direction
                     float3 viewDirection = normalize(_WorldSpaceCameraPos.xyz - i.posWorld.xyz);
