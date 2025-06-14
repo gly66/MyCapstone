@@ -2,17 +2,16 @@
 
 Texture2D<float4> currentHeightMap; 
 RWTexture2D<float4> accumulatedHeightMap; 
-float _DecayRate; 
+float _DecayRate = 0.0001f;
 [numthreads(8, 8, 1)]
 void HeightMapCompute(uint3 id : SV_DispatchThreadID)
 {
- 
     float currentHeight = currentHeightMap[id.xy].r;
-
-
     float accumulatedHeight = accumulatedHeightMap[id.xy].r;
-    
     accumulatedHeight = lerp(accumulatedHeight, 0, _DecayRate);
-
     accumulatedHeightMap[id.xy] = float4(max(currentHeight, accumulatedHeight), 0, 0, 0);
 }
+
+
+
+

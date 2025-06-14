@@ -54,7 +54,7 @@ Shader"Custom/DeformShader"
         float CalculateHeight(float2 uv)
         {
             float mean_height = 0.0;
-
+            uv.y = 1 - uv.y;
             // Sampling a 3x3 area for height averaging
             for (int i = -1; i <= 1; i++)
             {
@@ -74,9 +74,19 @@ Shader"Custom/DeformShader"
             v2f o;
             o.uv = v.uv;
 
-            // Sample the current vertex height
+    
+                // 将顶点从对象空间转换到世界空间
+            float4 worldPos = mul(unity_ObjectToWorld, v.vertex);
+
+            // 计算高度
             float heightPos = CalculateHeight(v.uv);
-            v.vertex.y -= heightPos;
+            worldPos.y -= heightPos; // 在世界空间中调整 Y 轴高度
+
+            // 再转换回对象空间
+            v.vertex = mul(unity_WorldToObject, worldPos);
+            // Sample the current vertex height
+            //float heightPos = CalculateHeight(v.uv);
+            //v.vertex.y -= heightPos;
 
             // Sample heights at adjacent points to calculate the normal
             float heightL = CalculateHeight(v.uv + float2(-_BlurSize, 0));

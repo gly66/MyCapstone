@@ -10,7 +10,8 @@ Material:
   m_Name: OthoSnowMat
   m_Shader: {fileID: 4800000, guid: 923f96e14a292ce438af45b43b7e1fa5, type: 3}
   m_ValidKeywords: []
-  m_InvalidKeywords: []
+  m_InvalidKeywords:
+  - _USELOWERLAYER_ON
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -74,17 +75,17 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BlurSize: 0.001
+    - _BlurSize: 0.0010428572
     - _BumpScale: 1
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
     - _DisplacementStrength: 1
-    - _DistanceBlend: 30
+    - _DistanceBlend: 100
     - _DstBlend: 0
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
-    - _InitialHeight: 0
+    - _InitialHeight: 1
     - _Metallic: 0
     - _Mode: 0
     - _OcclusionStrength: 1
@@ -92,7 +93,7 @@ Material:
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
-    - _TesselationEdgeLength: 5
+    - _TesselationEdgeLength: 3
     - _UVSec: 0
     - _UseLowerLayer: 0
     - _ZWrite: 1
@@ -101,6 +102,6 @@ Material:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _GlossColor: {r: 1, g: 1, b: 1, a: 1}
-    - _LowerLayer: {r: 0.864409, g: 0.8914426, b: 0.990566, a: 1}
+    - _LowerLayer: {r: 0.68293875, g: 0.7495755, b: 0.9716981, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []

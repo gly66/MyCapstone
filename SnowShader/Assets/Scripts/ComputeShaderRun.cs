@@ -13,27 +13,18 @@ public class ComputeShaderRun : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-
         accumulatedHeightMap = new RenderTexture(1024, 1024, 0,RenderTextureFormat.RFloat);
         accumulatedHeightMap.enableRandomWrite = true;
         accumulatedHeightMap.Create();
-
-
-
     }
-
-    // Update is called once per frame
     void Update()
     {
         int kernelHandle = computeShader.FindKernel("HeightMapCompute");
         computeShader.SetTexture(kernelHandle, "currentHeightMap", currentHeightMap);
         computeShader.SetTexture(kernelHandle, "accumulatedHeightMap", accumulatedHeightMap);
-        computeShader.SetFloat("_DecayRate", decayRate);
+        //computeShader.SetFloat("_DecayRate", decayRate);
         computeShader.Dispatch(kernelHandle, currentHeightMap.width / 8, currentHeightMap.height / 8, 1);
         snowMaterial.SetTexture("_TrailMap", accumulatedHeightMap);
-        //string filePath = Application.dataPath + "/HeightMap.png";
-        //SaveToFile(accumulatedHeightMap, filePath);
-
     }
 
     Texture2D SaveToTexture2D(RenderTexture renderTexture)

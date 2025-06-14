@@ -1,3 +1,4 @@
+using Newtonsoft.Json.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -17,7 +18,8 @@ public class ShaderController : MonoBehaviour
     public Text blurSizeValueText;
     public Text distanceBlendValueText;
     public Text tesselationEdgeLengthValueText;
-
+    public float decayRate = 0.0001f;
+    public ComputeShader computeShader;
 
     void Start()
     {
@@ -26,7 +28,8 @@ public class ShaderController : MonoBehaviour
         SetSliderValue(initialHeightSlider, initialHeightValueText, "_InitialHeight");
         SetSliderValue(displacementStrengthSlider, displacementStrengthValueText, "_DisplacementStrength");
         SetSliderValue(blurSizeSlider, blurSizeValueText, "_BlurSize");
-        SetSliderValue(distanceBlendSlider, distanceBlendValueText, "_DistanceBlend");
+        int kernelHandle = computeShader.FindKernel("HeightMapCompute");
+        computeShader.SetFloat("_DecayRate", 0.0001f);
         SetSliderValue(tesselationEdgeLengthSlider, tesselationEdgeLengthValueText, "_TesselationEdgeLength");
 
 
@@ -34,7 +37,7 @@ public class ShaderController : MonoBehaviour
         initialHeightSlider.onValueChanged.AddListener(value => OnSliderChanged(initialHeightValueText, "_InitialHeight", value));
         displacementStrengthSlider.onValueChanged.AddListener(value => OnSliderChanged(displacementStrengthValueText, "_DisplacementStrength", value));
         blurSizeSlider.onValueChanged.AddListener(value => OnSliderChanged(blurSizeValueText, "_BlurSize", value));
-        distanceBlendSlider.onValueChanged.AddListener(value => OnSliderChanged(distanceBlendValueText, "_DistanceBlend", value));
+        distanceBlendSlider.onValueChanged.AddListener(value => OnSpeedSliderChanged(distanceBlendValueText, "_DistanceBlend", value));
         tesselationEdgeLengthSlider.onValueChanged.AddListener(value => OnSliderChanged(tesselationEdgeLengthValueText, "_TesselationEdgeLength", value));
     }
 
@@ -53,6 +56,13 @@ public class ShaderController : MonoBehaviour
     void OnSliderChanged(Text valueText, string shaderProperty, float value)
     {
         targetMaterial.SetFloat(shaderProperty, value);
+        valueText.text = value.ToString("F3");
+    }
+    void OnSpeedSliderChanged(Text valueText, string shaderProperty, float value)
+    {
+        int kernelHandle = computeShader.FindKernel("HeightMapCompute");
+        computeShader.SetFloat("_DecayRate", value/1000);
+        //targetMaterial.SetFloat(shaderProperty, value);
         valueText.text = value.ToString("F3");
     }
 }

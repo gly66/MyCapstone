@@ -188,21 +188,39 @@ Shader"Otho Snow" {
     
                     return length(p1 - p2);
                 }
-                float4 Tessellation(TessVertex v, TessVertex v1, TessVertex v2)
+                float4 EdgeLengthBasedTess(TessVertex v, TessVertex v1, TessVertex v2)
                 {
                     // Tessellated based on edge length in clipspace
-                    return UnityEdgeLengthBasedTess(v.vertex, v1.vertex, v2.vertex, _TesselationEdgeLength);
+                    return UnityEdgeLengthBasedTess(v.vertex, v1.vertex, v2.vertex, 11-_TesselationEdgeLength);
                 }
+
+                //float4 EdgeLengthBasedTess(float3 v0, float3 v1, float3 v2)
+                //{
+                //    float d0 = distance(v1, v2);
+                //    float d1 = distance(v0, v2);
+                //    float d2 = distance(v0, v1);
+
+                //    float scale = tessLevel; // User-defined scalar from UI
+                //    float minTess = 1.0;
+                //    float maxTess = 50.0;
+
+                //    float e0 = clamp(d0 * scale, minTess, maxTess);
+                //    float e1 = clamp(d1 * scale, minTess, maxTess);
+                //    float e2 = clamp(d2 * scale, minTess, maxTess);
+                //    float inner = (e0 + e1 + e2) / 3.0;
+
+                //    return float4(e0, e1, e2, inner);
+                //}
+
 
                 OutputPatchConstant hullconst(InputPatch<TessVertex, 3> v)
                 {
                     OutputPatchConstant o = (OutputPatchConstant) 0;
-                    float4 ts = Tessellation(v[0], v[1], v[2]);
+                    float4 ts = EdgeLengthBasedTess(v[0], v[1], v[2]); 
                     o.edge[0] = ts.x;
                     o.edge[1] = ts.y;
                     o.edge[2] = ts.z;
-                    o.inside = ts.w; // The number of interior vertices generated is approximately related to the square of inside
-                    //o.inside = ts.w;
+                    o.inside = ts.w; 
                     return o;
                 }
                 [domain("tri")]
@@ -229,26 +247,36 @@ Shader"Otho Snow" {
                     v.vertex = mul(unity_WorldToObject, worldPos);
                     
                     float3 worldNormal = UnityObjectToWorldNormal(v.normal);
-                    // recalculate normals only when there is a displacement
-                    if (length(displacementAmount) >= 0.01 )
+                    // Only recalculate normals if there is noticeable displacement
+                    if (length(displacementAmount) >= 0.001)
                     {
-                        //Set the offset step size
-                        float offset = 1.0 / 1024; // You can adjust this value to control smoothness
+                        // Set the sampling offset step size in UV space
+                        // Here 1.0 / 1024 assumes a 1024x1024 texture resolution
+                        float offset = 1.0 / 1024; // Smaller offset = finer normal approximation
 
+                        // Define 2D UV offsets in horizontal and vertical directions
                         float2 offsetU = float2(offset, 0.0);
                         float2 offsetV = float2(0.0, offset);
+
+                        // Create 4 copies of the current vertex input for sampling
                         VertexInput v1 = v, v2 = v, v3 = v, v4 = v;
 
-                        v1.texcoord0 -= offsetU;
-                        v2.texcoord0 += offsetU;
-                        v3.texcoord0 -= offsetV;
-                        v4.texcoord0 += offsetV;
-    
-                        float hL = displacement(v1);
-                        float hR = displacement(v2);
-                        float hD = displacement(v3);
-                        float hU = displacement(v4);
-    
+                        // Shift the texcoord0 in U and V directions to sample neighboring points
+                        v1.texcoord0 -= offsetU; // Left neighbor
+                        v2.texcoord0 += offsetU; // Right neighbor
+                        v3.texcoord0 -= offsetV; // Bottom neighbor
+                        v4.texcoord0 += offsetV; // Top neighbor
+
+                        // Sample the displacement value at each offset point
+                        float hL = displacement(v1); // height at left
+                        float hR = displacement(v2); // height at right
+                        float hD = displacement(v3); // height at bottom (down)
+                        float hU = displacement(v4); // height at top (up)
+
+                        // Use central difference method to estimate gradient and compute normal
+                        // X component: difference between right and left heights
+                        // Z component: difference between up and down heights
+                        // Y component: approximated using scaled offset to maintain unit consistency
                         worldNormal = normalize(float3(hR - hL, 2.0 * offset * 100, hU - hD));
                     }
                     VertexOutput o = (VertexOutput) 0;
@@ -266,33 +294,21 @@ Shader"Otho Snow" {
 
                 float4 frag(VertexOutput i) : COLOR
                 {
-
-                    i.normalDir = normalize(i.normalDir);
-                    float3x3 tangentTransform = float3x3(i.tangentDir, i.bitangentDir, i.normalDir);
-                    float3 _BumpMap_var = UnpackNormal(tex2D(_BumpMap, TRANSFORM_TEX(i.uv0, _BumpMap)));
-                    float3 normalLocal = _BumpMap_var.rgb;
-    
                     // blend normals with normal maps
-                    float3 normalMap = normalize(mul(normalLocal, tangentTransform));
-                    float3 normalDirection = normalMap;
-    
-                    float3x3 worldToTangent = transpose(tangentTransform);
+                    float3x3 TBN = float3x3(i.tangentDir, i.bitangentDir, i.normalDir);
+                    float3x3 worldToTangent = transpose(TBN);
+                    float3 _normalMap_var = UnpackNormal(tex2D(_BumpMap, TRANSFORM_TEX(i.uv0, _BumpMap)));
+                    // Reoriented Normal Mapping (calculated in tangent space)
+                    float3 detailNormal = _normalMap_var.rgb;
                     float3 baseNormalTS = mul(worldToTangent, i.normalDir);
-    
-    
-                    //float3 t = (i.normalDir * 0.5 + 0.5) * float3(2, 2, 2) + float3(-1, -1, 0);
-                    //float3 u = (normalMap * 0.5 + 0.5) * float3(-2, -2, 2) + float3(1, 1, -1);
-                    //float3 normalDirection = normalize(t * dot(t, u) - u * t.z);;
 
-    //float3 n1 = baseNormalTS;
-    //float3 n2 = _BumpMap_var;
-
-    //float3x3 nBasis = float3x3(
-    //                                float3(n1.z, n1.y, -n1.x), // +90 degree rotation around y axis
-    //                                float3(n1.x, n1.z, -n1.y), // -90 degree rotation around x axis
-    //                                float3(n1.x, n1.y, n1.z));
-
-    //float3 normalDirection = normalize(n2.x * nBasis[0] + n2.y * nBasis[1] + n2.z * nBasis[2]);
+                    float3 t = (baseNormalTS.x, baseNormalTS.y, baseNormalTS.z + 1);
+                    float3 u = (-detailNormal.x, -detailNormal.y, detailNormal.z);
+                    // normal result in Tangent Space
+                    float3 r = normalize(t * dot(t, u)/t.z - u);
+                    // Get final normal in World Space
+                    //float3 normalDirection = normalize(mul(TBN, r));    
+                    float3 normalDirection = normalize(mul(detailNormal, TBN));
     
                     // View direction and light direction
                     float3 viewDirection = normalize(_WorldSpaceCameraPos.xyz - i.posWorld.xyz);
